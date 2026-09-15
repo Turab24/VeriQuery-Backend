@@ -1,0 +1,164 @@
+spring:
+  application:
+    name: enterprise-ai-hub
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/enterprise_ai}
+    username: ${SPRING_DATASOURCE_USERNAME:enterprise}
+    password: ${SPRING_DATASOURCE_PASSWORD:enterprise}
+    hikari:
+      pool-name: eai-hub-pool
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:15}
+      minimum-idle: ${DB_POOL_MIN_IDLE:3}
+      connection-timeout: 30000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+        query:
+          in_clause_parameter_padding: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MAX_FILE_SIZE:25MB}
+      max-request-size: ${MAX_REQUEST_SIZE:30MB}
+      file-size-threshold: 1MB
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=120s
+
+  threads:
+    virtual:
+      enabled: false
+
+  # Spring AI - OpenAI compatible endpoint.
+  # A placeholder key keeps the context bootable when AI_PROVIDER=demo (no outbound calls are made).
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:placeholder-key-not-used-in-demo-mode}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      chat:
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+          temperature: ${OPENAI_CHAT_TEMPERATURE:0.2}
+      embedding:
+        options:
+          model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+          dimensions: ${EMBEDDING_DIMENSIONS:1536}
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+  compression:
+    enabled: true
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+    display-request-duration: true
+  api-docs:
+    path: /v3/api-docs
+
+app:
+  jwt:
+    # 256-bit minimum. MUST be overridden via JWT_SECRET outside local development.
+    secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWRvLW5vdC11c2UtaW4tcHJvZC1jaGFuZ2UtbWU=}
+    issuer: enterprise-ai-hub
+    access-token-ttl: ${JWT_ACCESS_TTL:PT30M}
+    refresh-token-ttl: ${JWT_REFRESH_TTL:P14D}
+
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:80,http://localhost}
+
+  storage:
+    location: ${STORAGE_LOCATION:./data/documents}
+    max-file-size-bytes: ${STORAGE_MAX_FILE_SIZE_BYTES:26214400}
+    allowed-content-types:
+      - application/pdf
+      - text/plain
+      - text/markdown
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+    allowed-extensions:
+      - pdf
+      - txt
+      - md
+      - docx
+
+  ai:
+    # demo   -> deterministic local embedding + extractive answering (no API key required)
+    # openai -> Spring AI OpenAI chat + embedding models
+    # claude -> Anthropic Messages API for chat (needs ANTHROPIC_API_KEY); embeddings fall
+    #           back to the demo hashing client since Anthropic has no embeddings endpoint
+    provider: ${AI_PROVIDER:demo}
+    embedding-dimensions: ${EMBEDDING_DIMENSIONS:1536}
+    chat-model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+    embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+    embedding-batch-size: 32
+    max-conversation-history-messages: 8
+    anthropic-api-key: ${ANTHROPIC_API_KEY:}
+    anthropic-chat-model: ${ANTHROPIC_CHAT_MODEL:claude-opus-5}
+    anthropic-max-tokens: ${ANTHROPIC_MAX_TOKENS:4096}
+
+  rag:
+    top-k: ${RAG_TOP_K:6}
+    candidate-multiplier: 4
+    min-similarity: ${RAG_MIN_SIMILARITY:0.15}
+    max-context-characters: 12000
+    include-conversation-history: true
+
+  chunking:
+    target-characters: 1200
+    overlap-characters: 180
+    min-characters: 120
+
+  processing:
+    core-pool-size: 2
+    max-pool-size: 4
+    queue-capacity: 100
+
+logging:
+  level:
+    root: INFO
+    com.enterpriseai.hub: ${APP_LOG_LEVEL:INFO}
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%X{requestId:-no-request-id}] [%X{userId:-anonymous}] %-40.40logger{39} : %m%n"

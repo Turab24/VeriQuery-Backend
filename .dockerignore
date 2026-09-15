@@ -1,0 +1,10 @@
+target/
+data/
+.git/
+.idea/
+*.iml
+.env
+.env.*
+!.env.example
+logs/
+*.log

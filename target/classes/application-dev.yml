@@ -1,0 +1,20 @@
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    clean-disabled: false
+
+logging:
+  level:
+    com.enterpriseai.hub: DEBUG
+    org.hibernate.SQL: INFO
+
+app:
+  storage:
+    location: ${STORAGE_LOCATION:./data/documents}
+
+springdoc:
+  swagger-ui:
+    enabled: true
